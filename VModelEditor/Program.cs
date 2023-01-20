@@ -1,2 +1,2 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+﻿//TODO: program argument to open file immediately
+new VModelEditor().Run();
