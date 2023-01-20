@@ -1,0 +1,9 @@
+[submodule "BasicGUI"]
+	path = BasicGUI
+	url = https://github.com/bluesillybeard/BasicGUI
+[submodule "VRender"]
+	path = VRender
+	url = https://github.com/bluesillybeard/VRender
+[submodule "VModel"]
+	path = VModel
+	url = https://github.com/bluesillybeard/VModel
