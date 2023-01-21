@@ -4,6 +4,8 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Collections.Generic;
 using BasicGUI;
+
+namespace GUI;
 //a Texture and Shader for rendering a font.
 public class RenderFont
 {
