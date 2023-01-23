@@ -13,7 +13,7 @@ public sealed class Gui
     StackingContainer topButtons;
     ButtonElement fileButton;
     ButtonElement verticesOrTrianglesButton;
-    StackingContainer FileMenu;
+    StackingContainer fileMenu;
 
 
     public Gui(int width, int height, RenderFont font, int fontSize)
@@ -27,16 +27,18 @@ public sealed class Gui
         topButtons = new StackingContainer(tl, StackDirection.right, fontSize);
         //Filling TopButtons
         //File menu button
-        fileButton = new ButtonElement(topButtons, FileMenuShow, FileMenuHide, null, null, null);
+        fileButton = new ButtonElement(topButtons, FileMenuShow, null, null, null, null);
         fileButton.drawable = new TextElement(fileButton, 0xFFFFFFFF, this.fontSize, "File", display.defaultFont, display, 0);
         // Triangles or Vertices toggle. Defaults to Triangles
         verticesOrTrianglesButton = new ButtonElement(topButtons, null, null, ToggleVerticesOrTriangles, null, null);
         verticesOrTrianglesButton.drawable = new TextElement(verticesOrTrianglesButton, 0xFFFFFFFF, this.fontSize, "Triangle", display.defaultFont, display, 0);
         verticesOrTriangles = VerticesOrTriangles.Triangles;
 
-        FileMenu = new StackingContainer(null, StackDirection.down);
-        new TextElement(FileMenu, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
-        new TextElement(FileMenu, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
+        fileMenu = new StackingContainer(null, StackDirection.down, -1);
+        var openButton = new ButtonElement(fileMenu, null, null, (_) => {Console.WriteLine("Opening file apparently");}, null, null);
+        new TextElement(openButton, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
+        var saveButton = new ButtonElement(fileMenu, null, null,  (_) => {Console.WriteLine("saving file apparently");}, null, null);
+        new TextElement(saveButton, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
 
 
     }
@@ -44,21 +46,44 @@ public sealed class Gui
     public void Update()
     {
         plane.Iterate();
+        FileMenuUpdate();
     }
     public void Render()
     {
         plane.Draw();
     }
-
-    void FileMenuShow(ButtonElement b)
+    private bool _addFileMenu;
+    void FileMenuShow(ButtonElement _)
     {
-        System.Console.WriteLine("ShowFileMenu");
-        topButtons.AddChildBeginning(FileMenu);
+        //We can't add elements while we are iterating - bad things happen.
+        // Instead we simply set this flag for it to be added once the iteration is over.
+        _addFileMenu = true;
     }
-    void FileMenuHide(ButtonElement b)
+
+    void FileMenuUpdate()
     {
-        System.Console.WriteLine("HideFileMenu");
-        topButtons.RemoveChild(FileMenu);
+        if(topButtons.GetChildren().Contains(fileMenu))
+        {
+            bool remove = true;
+            foreach(INode n in fileMenu.GetChildren())
+            {
+                if(n is ButtonElement b)
+                {
+                    if(b.isHover) remove = false;
+                }
+            }
+            if(remove)
+            {
+                topButtons.RemoveChild(fileMenu);
+                topButtons.AddChildBeginning(fileButton);
+            }
+        }
+        if(_addFileMenu)
+        {
+            topButtons.RemoveChild(fileButton);
+            topButtons.AddChildBeginning(fileMenu);
+            _addFileMenu = false;
+        }
     }
 
     void ToggleVerticesOrTriangles(ButtonElement b)
