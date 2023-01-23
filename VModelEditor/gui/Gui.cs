@@ -64,14 +64,7 @@ public sealed class Gui
     {
         if(topButtons.GetChildren().Contains(fileMenu))
         {
-            bool remove = true;
-            foreach(INode n in fileMenu.GetChildren())
-            {
-                if(n is ButtonElement b)
-                {
-                    if(b.isHover) remove = false;
-                }
-            }
+            bool remove = !ContainsHoveredButtons(fileMenu);
             if(remove)
             {
                 topButtons.RemoveChild(fileMenu);
@@ -86,6 +79,19 @@ public sealed class Gui
         }
     }
 
+    bool ContainsHoveredButtons(IContainerNode n)
+    {
+        bool contains = false;
+        foreach(INode node in n.GetChildren())
+        {
+            if(node is ButtonElement b)
+            {
+                if(b.isHover) contains = true;
+            }
+        }
+        return contains;
+    }
+
     void ToggleVerticesOrTriangles(ButtonElement b)
     {
         //Handle vertices case
@@ -95,7 +101,7 @@ public sealed class Gui
             //I know FOR A FACT that the drawable is a text element and is not null.
             // At least as long as nobody messed with it while I wasn't looking...
             #nullable disable
-            ((TextElement)verticesOrTrianglesButton.drawable).Text = "Triangles";
+            ((TextElement)verticesOrTrianglesButton.drawable).Text = "Triangle";
             #nullable enable
             return;
         }
