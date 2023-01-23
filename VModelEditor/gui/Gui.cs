@@ -13,8 +13,8 @@ public sealed class Gui
     StackingContainer topButtons;
     ButtonElement fileButton;
     ButtonElement verticesOrTrianglesButton;
+    StackingContainer FileMenu;
 
-    //LayoutContainer fileMenu;
 
     public Gui(int width, int height, RenderFont font, int fontSize)
     {
@@ -33,6 +33,12 @@ public sealed class Gui
         verticesOrTrianglesButton = new ButtonElement(topButtons, null, null, ToggleVerticesOrTriangles, null, null);
         verticesOrTrianglesButton.drawable = new TextElement(verticesOrTrianglesButton, 0xFFFFFFFF, this.fontSize, "Triangle", display.defaultFont, display, 0);
         verticesOrTriangles = VerticesOrTriangles.Triangles;
+
+        FileMenu = new StackingContainer(null, StackDirection.down);
+        new TextElement(FileMenu, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
+        new TextElement(FileMenu, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
+
+
     }
 
     public void Update()
@@ -47,10 +53,12 @@ public sealed class Gui
     void FileMenuShow(ButtonElement b)
     {
         System.Console.WriteLine("ShowFileMenu");
+        topButtons.AddChildBeginning(FileMenu);
     }
     void FileMenuHide(ButtonElement b)
     {
         System.Console.WriteLine("HideFileMenu");
+        topButtons.RemoveChild(FileMenu);
     }
 
     void ToggleVerticesOrTriangles(ButtonElement b)
