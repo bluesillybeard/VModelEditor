@@ -35,7 +35,7 @@ public sealed class Gui
         verticesOrTriangles = VerticesOrTriangles.Triangles;
 
         fileMenu = new StackingContainer(null, StackDirection.down, -1);
-        var openButton = new ButtonElement(fileMenu, null, null, (_) => {Console.WriteLine("Opening file apparently");}, null, null);
+        var openButton = new ButtonElement(fileMenu, null, null, OpenFileButton, null, null);
         new TextElement(openButton, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
         var saveButton = new ButtonElement(fileMenu, null, null,  (_) => {Console.WriteLine("saving file apparently");}, null, null);
         new TextElement(saveButton, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
@@ -112,7 +112,13 @@ public sealed class Gui
         ((TextElement)verticesOrTrianglesButton.drawable).Text = "Vertices";
         #nullable enable
         verticesOrTriangles = VerticesOrTriangles.Vertices;
-        
+    }
+
+    void OpenFileButton(ButtonElement _)
+    {
+        //Opening a popup to open a file may seem simple at first.
+        // But in reality it's pretty complex.
+        // In order to do it, I wrote a lot of code to allow multiwindowing.
     }
 }
 
