@@ -2,6 +2,8 @@
 namespace GUI;
 
 using BasicGUI;
+using System.Diagnostics;
+
 public sealed class Gui
 {
     //properties of the GUI state
@@ -14,6 +16,8 @@ public sealed class Gui
     ButtonElement fileButton;
     ButtonElement verticesOrTrianglesButton;
     StackingContainer fileMenu;
+
+    Process? openFileDialog;
 
 
     public Gui(int width, int height, RenderFont font, int fontSize)
@@ -77,6 +81,21 @@ public sealed class Gui
             topButtons.AddChildBeginning(fileMenu);
             _addFileMenu = false;
         }
+        //if a file has been selected or cancelled
+        if(openFileDialog is not null && openFileDialog.HasExited)
+        {
+            var output = openFileDialog.StandardOutput;
+            string str = output.ReadToEnd();
+            if(str.StartsWith("FILE"))
+            {
+                //TODO: not debug this
+                System.Console.WriteLine(str.Substring(4));
+            } else {
+                System.Console.WriteLine("You're a dingus");
+            }
+            openFileDialog.Dispose();
+            openFileDialog = null;
+        }
     }
 
     bool ContainsHoveredButtons(IContainerNode n)
@@ -118,7 +137,26 @@ public sealed class Gui
     {
         //Opening a popup to open a file may seem simple at first.
         // But in reality it's pretty complex.
-        // In order to do it, I wrote a lot of code to allow multiwindowing.
+        // I can't get access to the system file dialog,
+        // as I am using GLFW+OpenGL which does not provide such functionality.
+        // So instead I start a completely separate process whose entire purpose is to be the file dialog.
+        // When a file has been selected, it will send the result to us through the standard output.
+        // Once the output is sent, it will be parsed.
+
+        //First, we start the process and stash it somewhere
+        var process = new Process();
+        //It's OS specific.
+        if(OperatingSystem.IsLinux())
+            process.StartInfo.FileName = "FileDialog";
+        else if(OperatingSystem.IsWindows())
+            process.StartInfo.FileName = "FileDialog.exe";
+        else
+            throw new Exception("Only Linux and Windows are supported!");
+        process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.RedirectStandardOutput = true;
+        process.Start();
+        openFileDialog = process;
+
     }
 }
 
