@@ -17,7 +17,7 @@ public sealed class Gui
     ButtonElement verticesOrTrianglesButton;
     StackingContainer fileMenu;
 
-    Process? openFileDialog;
+    Process? openFilePopup;
 
 
     public Gui(int width, int height, RenderFont font, int fontSize)
@@ -82,19 +82,19 @@ public sealed class Gui
             _addFileMenu = false;
         }
         //if a file has been selected or cancelled
-        if(openFileDialog is not null && openFileDialog.HasExited)
+        if(openFilePopup is not null && openFilePopup.HasExited)
         {
-            var output = openFileDialog.StandardOutput;
+            var output = openFilePopup.StandardOutput;
             string str = output.ReadToEnd();
             if(str.StartsWith("FILE"))
             {
-                //TODO: not debug this
+                //TODO: actually open a file
                 System.Console.WriteLine(str.Substring(4));
             } else {
                 System.Console.WriteLine("You're a dingus");
             }
-            openFileDialog.Dispose();
-            openFileDialog = null;
+            openFilePopup.Dispose();
+            openFilePopup = null;
         }
     }
 
@@ -155,7 +155,7 @@ public sealed class Gui
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.RedirectStandardOutput = true;
         process.Start();
-        openFileDialog = process;
+        openFilePopup = process;
 
     }
 }
