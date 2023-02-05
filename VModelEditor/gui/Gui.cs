@@ -2,7 +2,10 @@
 namespace GUI;
 
 using BasicGUI;
+
 using System.Diagnostics;
+
+using vmodel;
 
 public sealed class Gui
 {
@@ -19,10 +22,12 @@ public sealed class Gui
 
     Process? openFilePopup;
 
-
-    public Gui(int width, int height, RenderFont font, int fontSize)
+    //the editor so we can alert it when things happen
+    VModelEditor editor;
+    public Gui(int width, int height, RenderFont font, int fontSize, VModelEditor editor)
     {
         this.fontSize = fontSize;
+        this.editor = editor;
         //builds the UI
         display = new RenderDisplay(font);
         plane = new BasicGUIPlane(width, height, display);
@@ -43,8 +48,6 @@ public sealed class Gui
         new TextElement(openButton, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
         var saveButton = new ButtonElement(fileMenu, null, null,  (_) => {Console.WriteLine("saving file apparently");}, null, null);
         new TextElement(saveButton, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
-
-
     }
 
     public void Update()
@@ -81,6 +84,11 @@ public sealed class Gui
             topButtons.AddChildBeginning(fileMenu);
             _addFileMenu = false;
         }
+        HandleOpenFile();
+    }
+
+    void HandleOpenFile()
+    {
         //if a file has been selected or cancelled
         if(openFilePopup is not null && openFilePopup.HasExited)
         {
@@ -89,7 +97,7 @@ public sealed class Gui
             if(str.StartsWith("FILE"))
             {
                 //TODO: actually open a file
-                System.Console.WriteLine(str.Substring(4));
+                OpenFile(str.Substring(4));
             } else {
                 System.Console.WriteLine("You're a dingus");
             }
@@ -97,7 +105,34 @@ public sealed class Gui
             openFilePopup = null;
         }
     }
-
+    //The final function that is called when it is time to open a file
+    void OpenFile(string path)
+    {
+        //First, we detect the file type.
+        // For now we will only do Voxelesque models (VMF)
+        if(path.EndsWith('/'))
+        {
+            // TODO: tell the user using an actual GUI popup or something
+            System.Console.Error.WriteLine("File is a directory");
+        }
+        // TODO: tell the user using an actual GUI popup or something
+        if(!File.Exists(path))System.Console.Error.WriteLine("File is a directory or doesn't exist");
+        //Verify that is a valid vmf file
+        // raw VMeshes may be supported in the future, but for now they won't
+        if(!path.ToLower().EndsWith(".vmf"))System.Console.Error.WriteLine("File does not seem to be a vmf file");
+        VModel? model = VModelUtils.LoadModel(path, out var err);
+        if(model is null){
+            string errors = String.Empty;
+            if(err is not null)
+            {
+                errors = string.Join(',', err);
+            }
+            System.Console.Error.WriteLine("Error(s) while loading VMF file:" + errors);
+            return;
+        }
+        //We have the model, give it to the rest of the application
+        editor.OpenModel(model.Value);
+    }
     bool ContainsHoveredButtons(IContainerNode n)
     {
         bool contains = false;
@@ -156,7 +191,6 @@ public sealed class Gui
         process.StartInfo.RedirectStandardOutput = true;
         process.Start();
         openFilePopup = process;
-
     }
 }
 
