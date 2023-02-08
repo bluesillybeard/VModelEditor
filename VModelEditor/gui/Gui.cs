@@ -96,7 +96,6 @@ public sealed class Gui
             string str = output.ReadToEnd();
             if(str.StartsWith("FILE"))
             {
-                //TODO: actually open a file
                 OpenFile(str.Substring(4));
             } else {
                 System.Console.WriteLine("You're a dingus");
@@ -119,15 +118,27 @@ public sealed class Gui
         if(!File.Exists(path))System.Console.Error.WriteLine("File is a directory or doesn't exist");
         //Verify that is a valid vmf file
         // raw VMeshes may be supported in the future, but for now they won't
-        if(!path.ToLower().EndsWith(".vmf"))System.Console.Error.WriteLine("File does not seem to be a vmf file");
-        VModel? model = VModelUtils.LoadModel(path, out var err);
+        VModel? model;
+        List<VError>? err = null;
+        if(!path.ToLower().EndsWith(".vmf")){
+            //Load non VMF file
+            model = FileImports.LoadModelWithAssimp(path, out var error, editor.fallbackTexture);
+            if(error is not null)
+            {
+                err = new List<VError>();
+                err.Add(new VError(error));
+            }
+        } else
+        {
+            model = VModelUtils.LoadModel(path, out err);
+        }
         if(model is null){
             string errors = String.Empty;
             if(err is not null)
             {
                 errors = string.Join(',', err);
             }
-            System.Console.Error.WriteLine("Error(s) while loading VMF file:" + errors);
+            System.Console.Error.WriteLine("Error(s) while loading file:" + errors);
             return;
         }
         //We have the model, give it to the rest of the application

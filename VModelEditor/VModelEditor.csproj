@@ -1,8 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+  <!--Voxelesque's rendering thingy-->
     <ProjectReference Include="..\VRender\VRender.csproj" />
+    <!--A simplistic GUI library-->
     <ProjectReference Include="..\BasicGUI\BasicGUI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+  <!--For opening other 3D model formats-->
+    <PackageReference Include="AssimpNet" Version="4.1.0" />
   </ItemGroup>
 
   <PropertyGroup>

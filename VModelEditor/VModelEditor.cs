@@ -3,9 +3,11 @@ using vmodel;
 using GUI;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using OpenTK.Mathematics;
+using StbImageSharp;
 public class VModelEditor
 {
     public VModel? model;
+    public ImageResult fallbackTexture;
     Gui ui;
     IRender render;
     IRenderEntity? modelEntity;
@@ -22,6 +24,7 @@ public class VModelEditor
         //TODO: actual error handling
         #nullable disable
         RenderFont font = new RenderFont(render.LoadTexture("ascii.png", out var e1), render.LoadShader("gui", out var e2));
+        fallbackTexture = ImageResult.FromMemory(File.ReadAllBytes("ascii.png"));
         #nullable enable
         System.Console.WriteLine(e1);
         System.Console.WriteLine(e2);
