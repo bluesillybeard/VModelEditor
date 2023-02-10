@@ -6,13 +6,11 @@
     <!--A simplistic GUI library-->
     <ProjectReference Include="..\BasicGUI\BasicGUI.csproj" />
     <!--assimp - see comments in following item group for into on why its here and not somewhere else-->
-    <ProjectReference Include="..\assimpnet\AssimpNet\AssimpNet.csproj" />
+    <!--<ProjectReference Include="..\assimpnet\AssimpNet\AssimpNet.csproj" />-->
   </ItemGroup>
 
   <ItemGroup>
-    <!--For opening other 3D model formats-->
-    <!--Replaced with a git submodule for now until the author sorts out the nonexistence libdl.so thing-->
-    <!--<PackageReference Include="AssimpNet" Version="4.1.0" />-->
+    <PackageReference Include="AssimpNet" Version="5.0.0-beta1" />
   </ItemGroup>
 
   <PropertyGroup>
