@@ -7,6 +7,3 @@
 [submodule "VModel"]
 	path = VModel
 	url = https://github.com/bluesillybeard/VModel
-[submodule "assimpnet"]
-	path = assimpnet
-	url = https://bitbucket.org/Starnick/assimpnet.git
