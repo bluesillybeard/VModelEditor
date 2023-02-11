@@ -90,9 +90,23 @@ public class VModelEditor
             camera.Rotation += new Vector3((mouse.Y - mouse.PreviousY) * sensitivity, (mouse.X - mouse.PreviousX) * sensitivity, 0);
         }
     }
-
+    
+    public void OpenImage(ImageResult r)
+    {
+        if(model is null)
+            return;
+        VModel m = model.Value;
+        m.texture = r;
+        OpenModel(m);
+    }
     public void OpenModel(VModel model)
     {
+        if(modelEntity is not null)
+        {
+            render.DeleteEntity(modelEntity);
+            render.DeleteMesh(modelEntity.Mesh);
+            render.DeleteTexture(modelEntity.Texture);
+        }
         this.model = model;
         //We need to set up rendering for this model.
         // TODO: attribute detection and converting the model to the attributes for the shaders

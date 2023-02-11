@@ -7,6 +7,7 @@ using System.Diagnostics;
 
 using vmodel;
 
+using StbImageSharp;
 public sealed class Gui
 {
     //properties of the GUI state
@@ -133,6 +134,16 @@ public sealed class Gui
             model = VModelUtils.LoadModel(path, out err);
         }
         if(model is null){
+            //Check the possibility that it was actually an image
+            try{
+                var image = ImageResult.FromMemory(File.ReadAllBytes(path));
+                editor.OpenImage(image);
+                return;
+            } catch(Exception e)
+            {
+                if(err is null) err = new List<VError>();
+                err.Add(new VError(e));
+            }
             string errors = String.Empty;
             if(err is not null)
             {
