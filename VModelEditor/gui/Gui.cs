@@ -20,8 +20,10 @@ public sealed class Gui
     ButtonElement fileButton;
     ButtonElement verticesOrTrianglesButton;
     StackingContainer fileMenu;
-
+    //There's definitely a better way to do this but I am too lazy to figure out what it is.
+    // I made an entire application whose sole purpose is to create an open/save file dialog then print the chosen file to its output.
     Process? openFilePopup;
+    Process? saveFilePopup;
 
     //the editor so we can alert it when things happen
     VModelEditor editor;
@@ -47,7 +49,7 @@ public sealed class Gui
         fileMenu = new StackingContainer(null, StackDirection.down, -1);
         var openButton = new ButtonElement(fileMenu, null, null, OpenFileButton, null, null);
         new TextElement(openButton, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
-        var saveButton = new ButtonElement(fileMenu, null, null,  (_) => {Console.WriteLine("saving file apparently");}, null, null);
+        var saveButton = new ButtonElement(fileMenu, null, null,  SaveFileButton, null, null);
         new TextElement(saveButton, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
     }
 
@@ -86,6 +88,7 @@ public sealed class Gui
             _addFileMenu = false;
         }
         HandleOpenFile();
+        HandleSaveFile();
     }
 
     void HandleOpenFile()
@@ -103,6 +106,23 @@ public sealed class Gui
             }
             openFilePopup.Dispose();
             openFilePopup = null;
+        }
+    }
+    void HandleSaveFile()
+    {
+        //if a file has been selected or cancelled
+        if(saveFilePopup is not null && saveFilePopup.HasExited)
+        {
+            var output = saveFilePopup.StandardOutput;
+            string str = output.ReadToEnd();
+            if(str.StartsWith("FILE"))
+            {
+                SaveFile(str.Substring(4));
+            } else {
+                System.Console.WriteLine("You're a dingus");
+            }
+            saveFilePopup.Dispose();
+            saveFilePopup = null;
         }
     }
     //The final function that is called when it is time to open a file
@@ -154,6 +174,23 @@ public sealed class Gui
         }
         //We have the model, give it to the rest of the application
         editor.OpenModel(model.Value);
+    }
+    //The final function that is called when it is time to save a file.
+    // For now, it just saves the vmf, vmesh, and png into a folder, because I am too lazy to do that.
+    void SaveFile(string path)
+    {
+        //We can't save if there is no model
+        if(editor.model is null)return;
+        try{
+            //For the same of simplicity, I just make that path as a directory then save our files into it.
+            if(!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+            string name = new DirectoryInfo(path).Name;
+            //save the files
+            editor.model.
+        } catch(Exception e){
+            System.Console.WriteLine("Could not save file: " + e.StackTrace + "\n " + e.Message);
+        }
     }
     bool ContainsHoveredButtons(IContainerNode n)
     {
@@ -213,6 +250,22 @@ public sealed class Gui
         process.StartInfo.RedirectStandardOutput = true;
         process.Start();
         openFilePopup = process;
+    }
+
+    void SaveFileButton(ButtonElement _)
+    {
+        var process = new Process();
+        if(OperatingSystem.IsLinux())
+            process.StartInfo.FileName = "FileDialog";
+        else if(OperatingSystem.IsWindows())
+            process.StartInfo.FileName = "FileDialog.exe";
+        else
+            throw new Exception("Only Linux and Windows are supported!");
+        process.StartInfo.Arguments = "save";
+        process.StartInfo.CreateNoWindow = true;
+        process.StartInfo.RedirectStandardOutput = true;
+        process.Start();
+        saveFilePopup = process;
     }
 }
 
