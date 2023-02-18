@@ -95,7 +95,7 @@ public static class FileImports
             }
             error = null;
             return new VModel(
-                mesh, texture, null, null
+                mesh, texture, null
             );
         } catch (Exception e)
         {

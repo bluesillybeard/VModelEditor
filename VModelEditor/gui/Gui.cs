@@ -187,7 +187,7 @@ public sealed class Gui
                 Directory.CreateDirectory(path);
             string name = new DirectoryInfo(path).Name;
             //save the files
-            editor.model.
+            VModelUtils.SaveModel(editor.model.Value, path, "mesh.vmesh", "texture.png", "model.vmf");
         } catch(Exception e){
             System.Console.WriteLine("Could not save file: " + e.StackTrace + "\n " + e.Message);
         }
