@@ -8,18 +8,24 @@ using System.Diagnostics;
 using vmodel;
 
 using StbImageSharp;
+
+using VRender;
 public sealed class Gui
 {
     //properties of the GUI state
     public int fontSize;
     public VerticesOrTriangles verticesOrTriangles;
-    //GUI elements and containers
+    //The Rendering stuff
     BasicGUIPlane plane;
     RenderDisplay display;
+    //The GUI elements
     StackingContainer topButtons;
     ButtonElement fileButton;
     ButtonElement verticesOrTrianglesButton;
+    // This replaced the file button when the file button is hovered.
     StackingContainer fileMenu;
+
+    TableContainer meshTable;
     //There's definitely a better way to do this but I am too lazy to figure out what it is.
     // I made an entire application whose sole purpose is to create an open/save file dialog then print the chosen file to its output.
     Process? openFilePopup;
@@ -27,6 +33,8 @@ public sealed class Gui
 
     //the editor so we can alert it when things happen
     VModelEditor editor;
+    
+    bool modelChanged = false;
     public Gui(int width, int height, RenderFont font, int fontSize, VModelEditor editor)
     {
         this.fontSize = fontSize;
@@ -51,16 +59,71 @@ public sealed class Gui
         new TextElement(openButton, 0xFFFFFFFF, fontSize, "Open File", font, display, 0);
         var saveButton = new ButtonElement(fileMenu, null, null,  SaveFileButton, null, null);
         new TextElement(saveButton, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
+        
+        //The table of vertices
+        meshTable = new TableContainer(
+            (container) => {
+                return new ColorOutlineRectElement(container, 0x666666ff, null, null, null, null, fontSize/4, 0);
+            }, 1, new List<INode>(), //Only one column for now since that depends on the vertex attributes.
+            new LayoutContainer(plane.GetRoot(), new List<INode>(), VAllign.top, HAllign.right), fontSize/3
+        );
+        new TextElement(meshTable, 0xFFFFFFFF, fontSize, "No model loaded",font, display, 0);
     }
 
     public void Update()
     {
-        plane.Iterate();
         FileMenuUpdate();
+        MeshTableUpdate();
+        var size = IRender.CurrentRender.WindowSize();
+        plane.SetSize(size.X, size.Y);
+        plane.Iterate();
+        modelChanged = false;
     }
     public void Render()
     {
         plane.Draw();
+    }
+    private static readonly char[] intToXYZW = new char[]{'X', 'Y', 'Z', 'W'};
+    private void MeshTableUpdate()
+    {
+        if(editor.model is not null && modelChanged)
+        {
+            System.Console.WriteLine("Regenerated mesh table");
+            //populate the table.
+            // TODO: scrolling
+            // TODO: make the points editable
+            // TODO: vertices or triangles
+            //clear the table
+            var children = meshTable.GetChildren().ToArray(); //ToArray to avoid enumeration problems
+            foreach(var child in children)
+            {
+                meshTable.RemoveChild(child);
+            }
+            EAttribute[] attribs = editor.model.Value.mesh.attributes;
+            //make sure the table has the right number of columns
+            meshTable.columns = (int)VModelUtils.TotalAttributes(attribs);
+            //table labels
+            foreach(EAttribute attr in attribs)
+            {
+                for(int i=0; i<(int)attr % 5; i++)
+                {
+                    new TextElement(
+                        meshTable, 0xFFFFFF, fontSize, 
+                        Enum.GetName(typeof(EAttribute), attr) + intToXYZW[i], 
+                        display.defaultFont, display, 0
+                    );
+                }
+            }
+            //Table values
+            foreach(float f in editor.model.Value.mesh.vertices)
+            {
+                var textBox = new TextBoxElement(
+                    meshTable, fontSize, 0xFFFFFFFF, display.defaultFont, display, 0
+                );
+                textBox.back = new ColorBackgroundElement(textBox, 0x000010FF, 2);
+                textBox.SetText(f.ToString());
+            }
+        }
     }
     private bool _addFileMenu;
     void FileMenuShow(ButtonElement _)
@@ -158,6 +221,7 @@ public sealed class Gui
             try{
                 var image = ImageResult.FromMemory(File.ReadAllBytes(path));
                 editor.OpenImage(image);
+                modelChanged = true;
                 return;
             } catch(Exception e)
             {
@@ -173,6 +237,7 @@ public sealed class Gui
             return;
         }
         //We have the model, give it to the rest of the application
+        modelChanged = true;
         editor.OpenModel(model.Value);
     }
     //The final function that is called when it is time to save a file.

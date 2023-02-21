@@ -35,7 +35,7 @@ public class VModelEditor
         camera = new RenderCamera(Vector3.Zero, Vector3.Zero, 90, render.WindowSize());
         render.SetCamera(camera);
         //Setup
-        ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 20, this);
+        ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 10, this);
         render.OnUpdate += Update;
         render.OnRender += Render;
         render.Run();
