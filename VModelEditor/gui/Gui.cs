@@ -74,7 +74,7 @@ public sealed class Gui
     {
         FileMenuUpdate();
         MeshTableUpdate();
-        var size = IRender.CurrentRender.WindowSize();
+        var size = VRenderLib.Render.WindowSize();
         plane.SetSize(size.X, size.Y);
         plane.Iterate();
         modelChanged = false;

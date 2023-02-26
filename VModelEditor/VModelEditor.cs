@@ -1,3 +1,5 @@
+using VRender.Interface;
+using VRender.Utility;
 using VRender;
 using vmodel;
 using GUI;
@@ -8,45 +10,71 @@ public class VModelEditor
 {
     public VModel? model;
     public ImageResult fallbackTexture;
-    Gui ui;
+
+    //TODO: Refactor so this isn't required
+    #nullable disable
+    Gui ui; //UI is initialize in the Start method since it requires the Render to be functional
+    #nullable restore
     IRender render;
-    IRenderEntity? modelEntity;
-    IRenderShader shader;
-    RenderCamera camera;
+    Camera camera;
+
+    IRenderTexture? modelRenderTexture;
+    IRenderMesh? modelRenderMesh;
+    IRenderShader? modelShader;
+
     public VModelEditor()
     {
         RenderSettings settings = new RenderSettings()
         {
             BackgroundColor = 0x00000000,
+            WindowTitle = "VModel converter",
+            size = new Vector2i(800, 600),
         };
         //Loading Stuff
-        render = RenderUtils.CreateIdealRenderOrDie(settings);
-        //TODO: actual error handling
-        #nullable disable
-        RenderFont font = new RenderFont(render.LoadTexture("ascii.png", out var e1), render.LoadShader("gui", out var e2));
-        fallbackTexture = ImageResult.FromMemory(File.ReadAllBytes("ascii.png"));
-        #nullable enable
-        System.Console.WriteLine(e1);
-        System.Console.WriteLine(e2);
-        var shaderQuestionMark = render.LoadShader("", out var err);
-        if(shaderQuestionMark is null)throw new Exception("SHADER IS MISSING BRO");
-        shader = shaderQuestionMark;
-
-        camera = new RenderCamera(Vector3.Zero, Vector3.Zero, 90, render.WindowSize());
-        render.SetCamera(camera);
-        //Setup
-        ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 10, this);
+        render = VRenderLib.InitRender(settings);
+        render.OnStart += Start;
         render.OnUpdate += Update;
-        render.OnRender += Render;
+        render.OnDraw += Render;
+
+        //Load some stuff that doesn't interact with the GPU yet
+        fallbackTexture = ImageResult.FromMemory(File.ReadAllBytes("ascii.png"));
+        camera = new Camera(Vector3.Zero, Vector3.Zero, 90, render.WindowSize());
+
         render.Run();
     }
-
-    private void Render(double delta)
+    private void Start()
     {
+        #nullable disable
+        RenderFont font = new RenderFont(
+            render.LoadTexture("ascii.png", out var e1),
+            render.GetShader(new ShaderFeatures(MeshGenerators.defaultTextAttributes, true, false))
+        );
+
+        
+        #nullable enable
+        System.Console.WriteLine(e1);
+
+        
+        //Setup
+        ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 10, this);
+    }
+    private void Render(TimeSpan delta)
+    {
+        render.BeginRenderQueue();
+        if(modelRenderMesh is not null && modelRenderTexture is not null && modelShader is not null)
+        {
+            KeyValuePair<string, object>[] uniforms = new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("camera", camera.GetTransform()),
+                //The model does not have a transform; the camera moves around it instead.
+            };
+            render.Draw(modelRenderTexture, modelRenderMesh, modelShader, uniforms, true);
+        }
+        
         ui.Render();
+        render.EndRenderQueue();
     }
 
-    private void Update(double delta)
+    private void Update(TimeSpan delta)
     {
         ui.Update();
         UpdateCamera();
@@ -101,18 +129,23 @@ public class VModelEditor
     }
     public void OpenModel(VModel model)
     {
-        if(modelEntity is not null)
+        if(modelRenderMesh is not null)
         {
-            render.DeleteEntity(modelEntity);
-            render.DeleteMesh(modelEntity.Mesh);
-            render.DeleteTexture(modelEntity.Texture);
+            modelRenderMesh.Dispose();
+            modelRenderMesh = null;
         }
+        if(modelRenderTexture is not null)
+        {
+            modelRenderTexture.Dispose();
+            modelRenderTexture = null;
+        }
+        //We don't bother destroying the shader since it's very small and VRender reuses shaders if it can.
         this.model = model;
         //We need to set up rendering for this model.
-        // TODO: attribute detection and converting the model to the attributes for the shaders
 
-        //For now we just upload it to the GPU and hope with all our might that it just so happens to have the correct attributes
         var gpuModel = render.LoadModel(model);
-        modelEntity = render.SpawnEntity(EntityPosition.Zero, shader, gpuModel.mesh, gpuModel.texture, true, null);
+        modelRenderMesh = gpuModel.mesh;
+        modelRenderTexture = gpuModel.texture;
+        modelShader = render.GetShader(new ShaderFeatures(model.mesh.attributes, true, true));
     }
 }
