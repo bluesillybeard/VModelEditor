@@ -29,6 +29,7 @@ public class VModelEditor
             BackgroundColor = 0x00000000,
             WindowTitle = "VModel converter",
             size = new Vector2i(800, 600),
+            TargetFrameTime = 1f/60f,
         };
         //Loading Stuff
         render = VRenderLib.InitRender(settings);
@@ -41,6 +42,8 @@ public class VModelEditor
         camera = new Camera(Vector3.Zero, Vector3.Zero, 90, render.WindowSize());
 
         render.Run();
+
+        //render.Dispose();
     }
     private void Start()
     {
