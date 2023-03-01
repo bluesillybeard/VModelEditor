@@ -58,7 +58,7 @@ public static class FileImports
             }
             //Now we have the vertices, but we need the indices too.
             uint[] indices = m.GetUnsignedIndices();
-            VMesh mesh = new VMesh(vertices.ToArray(), indices, attributes.ToArray(), null);
+            VMesh mesh = new VMesh(vertices.ToArray(), indices, new Attributes(attributes.ToArray()), null);
             //Finally we need the texture, if there is one.
             // We only get the first texture - remeber we only support models with a single texture.
             ImageResult texture;
