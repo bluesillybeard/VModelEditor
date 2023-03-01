@@ -99,7 +99,7 @@ public sealed class Gui
             {
                 meshTable.RemoveChild(child);
             }
-            EAttribute[] attribs = editor.model.Value.mesh.attributes;
+            Attributes attribs = editor.model.Value.mesh.attributes;
             //make sure the table has the right number of columns
             meshTable.columns = (int)VModelUtils.TotalAttributes(attribs);
             //table labels

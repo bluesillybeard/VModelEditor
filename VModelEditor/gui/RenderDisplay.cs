@@ -25,7 +25,12 @@ public sealed class RenderDisplay : IDisplay
     {
         this.defaultFont = defaultFont;
     }
+    //default font for text rendering
     public RenderFont defaultFont;
+    //a one unit square in the XY plane, with texture coordinates for drawing images
+    private IRenderMesh squareImage;
+    // This is a custom shader that takes in a vec4 uniform as a color and renders the entire object in that color
+    private IRenderShader squareColor;
     int textIndex = 0;
     public void BeginFrame()
     {
