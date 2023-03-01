@@ -101,7 +101,7 @@ public sealed class Gui
             }
             Attributes attribs = editor.model.Value.mesh.attributes;
             //make sure the table has the right number of columns
-            meshTable.columns = (int)VModelUtils.TotalAttributes(attribs);
+            meshTable.columns = (int)attribs.TotalAttributes();
             //table labels
             foreach(EAttribute attr in attribs)
             {
