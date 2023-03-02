@@ -5,6 +5,7 @@ using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Collections.Generic;
 using BasicGUI;
 using vmodel;
+using StbImageSharp;
 
 namespace GUI;
 //a Texture and Shader for rendering a font.
@@ -51,8 +52,6 @@ public sealed class RenderDisplay : IDisplay
             layout (location=1) in vec2 texCoords; //These are ignored.
 
             uniform mat4 model;
-            //ranges from 0 to 255. lower values are drawn behind.
-            uniform float depth;
             //uniform mat4 camera; We don't apply the camera transform
             void main()
             {
@@ -88,7 +87,28 @@ public sealed class RenderDisplay : IDisplay
     }
     public void DrawPixel(int x, int y, uint rgb, byte depth = 0)
     {
-        //To draw a pixel, we draw a little tiny square where the pixel would be.
+        var size = VRenderLib.Render.WindowSize();
+        //To make things faster, we cull pixels that won't be drawn anyway
+        if(x < 0 || x > size.X || y < 0 || y > size.Y)
+        {
+            return;
+        }
+        //The input is pixel coordinates, so we need to convert them into OpenGl coordinates
+        float glX = ((float)x/(float)size.X - 0.5f) * 2;
+        float glY = ((float)y/(float)size.Y - 0.5f) * 2;
+        //we need to create a matrix transform that will turn our unit square into a pixel-sized object.
+        Matrix4 transform = new Matrix4();
+        //TODO: these might need to be reversed since multiplication order matters in matrices
+        Matrix4.CreateTranslation(-glX, -glY, depth/256f, out transform);
+        transform *= Matrix4.CreateScale( 1f/size.X, 1f/size.Y, 1f);
+        //it's rendering time
+        VRenderLib.Render.Draw(
+            defaultFont.texture, //this texture isn't rendered, but for the sake of the Render API we use it anyway
+            square, pureColor,
+            new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("color", new Vector4())
+            },true
+        );
     }
     public void FillRect(int x0, int y0, int x1, int y1, uint rgb, byte depth = 0)
     {
