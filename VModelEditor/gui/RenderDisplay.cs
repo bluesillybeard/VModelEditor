@@ -4,6 +4,7 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Collections.Generic;
 using BasicGUI;
+using vmodel;
 
 namespace GUI;
 //a Texture and Shader for rendering a font.
@@ -24,24 +25,70 @@ public sealed class RenderDisplay : IDisplay
     public RenderDisplay(RenderFont defaultFont)
     {
         this.defaultFont = defaultFont;
+        //Load the unit square mesh
+        VMesh squareMesh = new VMesh(
+            new float[]{
+                //position, textureCoord
+                -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+                -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+                0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+                0.5f, 0.5f, 0.0f, 1.0f, 1.0f,
+            },
+            new uint[]{
+                0, 1, 2,
+                1, 2, 3,
+            },
+            new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords}),
+            null
+        );
+        this.square = VRenderLib.Render.LoadMesh(squareMesh);
+        //load the pure color shader.
+        // The shader is pretty constant and hidden so it's hard-coded
+        pureColor = VRenderLib.Render.GetShader(
+            //vertex shader code
+            @"
+            layout (location=0) in vec3 position;
+            layout (location=1) in vec2 texCoords; //These are ignored.
+
+            uniform mat4 model;
+            //ranges from 0 to 255. lower values are drawn behind.
+            uniform float depth;
+            //uniform mat4 camera; We don't apply the camera transform
+            void main()
+            {
+                gl_Position = model * position;
+            }
+            ",
+            //fragment shader code
+            @"
+            uniform vec4 color;
+            out vec4 colorOut;
+            void main()
+            {
+                colorOut = color;
+            }
+            ",
+            this.square.GetAttributes()
+        );
     }
     //default font for text rendering
     public RenderFont defaultFont;
     //a one unit square in the XY plane, with texture coordinates for drawing images
-    private IRenderMesh squareImage;
+    private IRenderMesh square;
     // This is a custom shader that takes in a vec4 uniform as a color and renders the entire object in that color
-    private IRenderShader squareColor;
+    private IRenderShader pureColor;
     int textIndex = 0;
     public void BeginFrame()
     {
-        
+        //We actually don't call any VRender functions in here since we assume someone else already did
     }
     public void EndFrame()
     {
+        //We actually don't call any VRender functions in here since we assume someone else already did
     }
     public void DrawPixel(int x, int y, uint rgb, byte depth = 0)
     {
-        
+        //To draw a pixel, we draw a little tiny square where the pixel would be.
     }
     public void FillRect(int x0, int y0, int x1, int y1, uint rgb, byte depth = 0)
     {
