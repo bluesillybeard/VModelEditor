@@ -30,10 +30,10 @@ public sealed class RenderDisplay : IDisplay
         VMesh squareMesh = new VMesh(
             new float[]{
                 //position, textureCoord
-                -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
-                -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-                0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-                0.5f, 0.5f, 0.0f, 1.0f, 1.0f,
+                0f, 0f, 0.0f, 0.0f, 0.0f,
+                0f, 1f, 0.0f, 0.0f, 1.0f,
+                1f, 0f, 0.0f, 1.0f, 0.0f,
+                1f, 1f, 0.0f, 1.0f, 1.0f,
             },
             new uint[]{
                 0, 1, 2,
@@ -48,6 +48,7 @@ public sealed class RenderDisplay : IDisplay
         pureColor = VRenderLib.Render.GetShader(
             //vertex shader code
             @"
+            #version 330 core
             layout (location=0) in vec3 position;
             layout (location=1) in vec2 texCoords; //These are ignored.
 
@@ -55,11 +56,12 @@ public sealed class RenderDisplay : IDisplay
             //uniform mat4 camera; We don't apply the camera transform
             void main()
             {
-                gl_Position = model * position;
+                gl_Position = vec4(position, 1.0) * model;
             }
             ",
             //fragment shader code
             @"
+            #version 330 core
             uniform vec4 color;
             out vec4 colorOut;
             void main()
@@ -76,7 +78,6 @@ public sealed class RenderDisplay : IDisplay
     private IRenderMesh square;
     // This is a custom shader that takes in a vec4 uniform as a color and renders the entire object in that color
     private IRenderShader pureColor;
-    int textIndex = 0;
     public void BeginFrame()
     {
         //We actually don't call any VRender functions in here since we assume someone else already did
@@ -87,38 +88,39 @@ public sealed class RenderDisplay : IDisplay
     }
     public void DrawPixel(int x, int y, uint rgb, byte depth = 0)
     {
-        var size = VRenderLib.Render.WindowSize();
-        //To make things faster, we cull pixels that won't be drawn anyway
-        if(x < 0 || x > size.X || y < 0 || y > size.Y)
-        {
-            return;
-        }
-        //The input is pixel coordinates, so we need to convert them into OpenGl coordinates
-        float glX = ((float)x/(float)size.X - 0.5f) * 2;
-        float glY = ((float)y/(float)size.Y - 0.5f) * 2;
-        //we need to create a matrix transform that will turn our unit square into a pixel-sized object.
-        Matrix4 transform = new Matrix4();
-        //TODO: these might need to be reversed since multiplication order matters in matrices
-        Matrix4.CreateTranslation(-glX, -glY, depth/256f, out transform);
-        transform *= Matrix4.CreateScale( 1f/size.X, 1f/size.Y, 1f);
-        //it's rendering time
-        VRenderLib.Render.Draw(
-            defaultFont.texture, //this texture isn't rendered, but for the sake of the Render API we use it anyway
-            square, pureColor,
-            new KeyValuePair<string, object>[]{
-                new KeyValuePair<string, object>("color", new Vector4())
-            },true
-        );
+
     }
     public void FillRect(int x0, int y0, int x1, int y1, uint rgb, byte depth = 0)
     {
 
     }
-    //These were copied and translated from Wikipedia, of all places: https://en.wikipedia.org/wiki/Bresenham's_line_algorithm
-    // Stackoverflow doesn't have ALL the answers.
     public void DrawLine(int x1, int y1, int x2, int y2, uint rgb, byte depth = 0)
     {
+        var size = VRenderLib.Render.WindowSize();
+        //we need to create a matrix transform that will turn our unit square into a pixel-sized object.
+        Matrix4 transform = Matrix4.Identity;
         
+        float glX1 = ((float)x1/(float)size.X - 0.5f) * 2;
+        float glY1 = ((float)y1/(float)size.Y - 0.5f) * 2;
+        float glX2 = ((float)(x2 + 1)/(float)size.X - 0.5f) * 2;
+        float glY2 = ((float)(y2 + 1)/(float)size.Y - 0.5f) * 2;
+        Vector3 scale = ((glX2-glX1)*2, (glY2-glY1)*2, 1);
+        transform *= Matrix4.CreateRotationZ(MathF.Atan2(y2-y1, x2-x1));
+        transform *= Matrix4.CreateScale(scale);
+        transform *= Matrix4.CreateTranslation(glX2, 0f, 0f);
+        
+
+        //We need to convert the RGBA color into a vec4
+        VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
+        //it's rendering time
+        VRenderLib.Render.Draw(
+            defaultFont.texture, //this texture isn't rendered, but for the sake of the Render API we use it anyway
+            square, pureColor,
+            new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("color", new Vector4(r/256f, g/256f, b/256f, a/256f)),
+                new KeyValuePair<string, object>("model", transform),
+            },true
+        );
     }
 
     public void DrawVerticalLine(int x, int y1, int y2, uint rgb, byte depth = 0)
