@@ -109,7 +109,6 @@ public sealed class RenderDisplay : IDisplay
         transform *= Matrix4.CreateScale(scale);
         transform *= Matrix4.CreateTranslation(glX2, 0f, 0f);
         
-
         //We need to convert the RGBA color into a vec4
         VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
         //it's rendering time
