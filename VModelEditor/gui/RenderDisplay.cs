@@ -8,83 +8,68 @@ using vmodel;
 using StbImageSharp;
 
 namespace GUI;
-//a Texture and Shader for rendering a font.
-public class RenderFont
-{
-    public RenderFont(IRenderTexture fontTexture, IRenderShader fontShader)
-    {
-        texture = fontTexture;
-        shader  = fontShader;
-    }
-    public IRenderTexture texture;
-    public IRenderShader shader;
-}
 
 public sealed class RenderDisplay : IDisplay
 {
 
-    public RenderDisplay(RenderFont defaultFont)
+    public RenderDisplay(IRenderTexture defaultFontTexture)
     {
-        this.defaultFont = defaultFont;
-        //Load the unit square mesh
-        VMesh squareMesh = new VMesh(
-            new float[]{
-                //position, textureCoord
-                0f, 0f, 0.0f, 0.0f, 0.0f,
-                0f, 1f, 0.0f, 0.0f, 1.0f,
-                1f, 0f, 0.0f, 1.0f, 0.0f,
-                1f, 1f, 0.0f, 1.0f, 1.0f,
-            },
-            new uint[]{
-                0, 1, 2,
-                1, 2, 3,
-            },
-            new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords}),
-            null
-        );
-        this.square = VRenderLib.Render.LoadMesh(squareMesh);
-        //load the pure color shader.
-        // The shader is pretty constant and hidden so it's hard-coded
-        pureColor = VRenderLib.Render.GetShader(
+        this.defaultFont = defaultFontTexture;
+        mesh = new MeshBuilder();
+        //load the special shader.
+        //TODO: Once shader features loading is finished, make this not hard coded.
+        shader = VRenderLib.Render.GetShader(
             //vertex shader code
             @"
             #version 330 core
             layout (location=0) in vec3 position;
-            layout (location=1) in vec2 texCoords; //These are ignored.
-
-            uniform mat4 model;
-            //uniform mat4 camera; We don't apply the camera transform
+            layout (location=1) in vec2 texCoords;
+            layout (location=2) in vec4 rgba;
+            //we don't apply any transform at all
+            out vec4 colorOut;
+            out vec2 texCoordsOut;
             void main()
             {
-                gl_Position = vec4(position, 1.0) * model;
+                gl_Position = vec4(position, 1.0);
             }
             ",
-            //fragment shader code
+            //fragment shader code - this is where some stuff happens
             @"
             #version 330 core
-            uniform vec4 color;
-            out vec4 colorOut;
+            in vec4 colorOut;
+            in vec2 texCoordsOut;
+            out vec4 pixelOut;
+            uniform sampler2D tex;
             void main()
             {
-                colorOut = color;
+                vec4 texColor = texture(tex, texCoordsOut);
+                //blend between the two colors, because on the colorOut alpha.
+                pixelOut = mix(texColor, colorOut, colorOut.a);
             }
             ",
-            this.square.GetAttributes()
+            new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords, EAttribute.rgbaColor})
         );
     }
     //default font for text rendering
-    public RenderFont defaultFont;
-    //a one unit square in the XY plane, with texture coordinates for drawing images
-    private IRenderMesh square;
-    // This is a custom shader that takes in a vec4 uniform as a color and renders the entire object in that color
-    private IRenderShader pureColor;
+    public IRenderTexture defaultFont;
+
+    private MeshBuilder mesh;
+    private IRenderShader shader;
+    private IRenderMesh? renderMesh;
     public void BeginFrame()
     {
-        //We actually don't call any VRender functions in here since we assume someone else already did
+        mesh.Clear();
+        if(renderMesh != null)renderMesh.Dispose();
     }
     public void EndFrame()
     {
-        //We actually don't call any VRender functions in here since we assume someone else already did
+        //TODO: reuse mesh buffer
+        //TODO: ability to use non-default font
+        renderMesh = VRenderLib.Render.LoadMesh(mesh.ToMesh(shader.GetAttributes()));
+        VRenderLib.Render.Draw(
+            defaultFont, renderMesh, shader, Enumerable.Empty<KeyValuePair<string, object>>(), false
+        );
+
     }
     public void DrawPixel(int x, int y, uint rgb, byte depth = 0)
     {
@@ -98,28 +83,26 @@ public sealed class RenderDisplay : IDisplay
     {
         var size = VRenderLib.Render.WindowSize();
         //we need to create a matrix transform that will turn our unit square into a pixel-sized object.
-        Matrix4 transform = Matrix4.Identity;
         
         float glX1 = ((float)x1/(float)size.X - 0.5f) * 2;
         float glY1 = ((float)y1/(float)size.Y - 0.5f) * 2;
-        float glX2 = ((float)(x2 + 1)/(float)size.X - 0.5f) * 2;
-        float glY2 = ((float)(y2 + 1)/(float)size.Y - 0.5f) * 2;
-        Vector3 scale = ((glX2-glX1)*2, (glY2-glY1)*2, 1);
-        transform *= Matrix4.CreateRotationZ(MathF.Atan2(y2-y1, x2-x1));
-        transform *= Matrix4.CreateScale(scale);
-        transform *= Matrix4.CreateTranslation(glX2, 0f, 0f);
+        float glX2 = ((float)x2/(float)size.X - 0.5f) * 2;
+        float glY2 = ((float)y2/(float)size.Y - 0.5f) * 2;
+        //TODO: see if lines become too thin
+        //float glX3 = ((float)(x1 + 1)/(float)size.X - 0.5f) * 2;
+        //float glY3 = ((float)(y1 + 1)/(float)size.Y - 0.5f) * 2;
+        //float glX4 = ((float)(x2 + 1)/(float)size.X - 0.5f) * 2;
+        //float glY4 = ((float)(y2 + 1)/(float)size.Y - 0.5f) * 2;
         
         //We need to convert the RGBA color into a vec4
         VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
-        //it's rendering time
-        VRenderLib.Render.Draw(
-            defaultFont.texture, //this texture isn't rendered, but for the sake of the Render API we use it anyway
-            square, pureColor,
-            new KeyValuePair<string, object>[]{
-                new KeyValuePair<string, object>("color", new Vector4(r/256f, g/256f, b/256f, a/256f)),
-                new KeyValuePair<string, object>("model", transform),
-            },true
-        );
+
+        //We add the vertices to the batch thingy
+        //TODO: depth
+        //pos(3), texcoord(2), color(4)
+        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX2, glY2, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(0,    0,    0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
     }
 
     public void DrawVerticalLine(int x, int y1, int y2, uint rgb, byte depth = 0)
@@ -283,7 +266,6 @@ public sealed class RenderDisplay : IDisplay
     {
         return IRender.CurrentRender.Keyboard().IsKeyDown(Keys.ScrollLock);
     }
-
     private Keys KeyCodeToKeys(KeyCode key)
     {
         switch(key)

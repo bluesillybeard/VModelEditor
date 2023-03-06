@@ -10,6 +10,7 @@ using vmodel;
 using StbImageSharp;
 
 using VRender;
+using VRender.Interface;
 public sealed class Gui
 {
     //properties of the GUI state
@@ -35,7 +36,7 @@ public sealed class Gui
     VModelEditor editor;
     
     bool modelChanged = false;
-    public Gui(int width, int height, RenderFont font, int fontSize, VModelEditor editor)
+    public Gui(int width, int height, IRenderTexture font, int fontSize, VModelEditor editor)
     {
         this.fontSize = fontSize;
         this.editor = editor;

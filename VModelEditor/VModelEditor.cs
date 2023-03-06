@@ -47,17 +47,12 @@ public class VModelEditor
     }
     private void Start()
     {
-        #nullable disable
-        RenderFont font = new RenderFont(
-            render.LoadTexture("ascii.png", out var e1),
-            render.GetShader(new ShaderFeatures(MeshGenerators.defaultTextAttributes, true, false))
-        );
-
-        
-        #nullable enable
-        System.Console.WriteLine(e1);
-
-        
+        var font = render.LoadTexture("ascii.png", out var e1);
+        if(font is null)
+        {
+            System.Console.WriteLine(e1);
+            throw new Exception("bro can't load font file");
+        }
         //Setup
         ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 10, this);
     }
