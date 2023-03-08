@@ -30,15 +30,17 @@ public sealed class RenderDisplay : IDisplay
             out vec2 texCoordsOut;
             void main()
             {
+                colorOut = rgba;
+                texCoordsOut = texCoords;
                 gl_Position = vec4(position, 1.0);
             }
             ",
             //fragment shader code - this is where some stuff happens
             @"
             #version 330 core
+            out vec4 pixelOut;
             in vec4 colorOut;
             in vec2 texCoordsOut;
-            out vec4 pixelOut;
             uniform sampler2D tex;
             void main()
             {
@@ -65,7 +67,8 @@ public sealed class RenderDisplay : IDisplay
     {
         //TODO: reuse mesh buffer
         //TODO: ability to use non-default font
-        renderMesh = VRenderLib.Render.LoadMesh(mesh.ToMesh(shader.GetAttributes()));
+        var vmesh = mesh.ToMesh(shader.GetAttributes());
+        renderMesh = VRenderLib.Render.LoadMesh(vmesh);
         VRenderLib.Render.Draw(
             defaultFont, renderMesh, shader, Enumerable.Empty<KeyValuePair<string, object>>(), false
         );
@@ -73,26 +76,51 @@ public sealed class RenderDisplay : IDisplay
     }
     public void DrawPixel(int x, int y, uint rgb, byte depth = 0)
     {
-
+        (var glX, var glY) = PixelToGL(x, y);
+        (var glXp, var glYp) = PixelToGL(x+1, y+1);
+        VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
+        //We can get away with drawing a single triangle
+        mesh.AddVertex(glX, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX, glYp, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glXp, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
     }
     public void FillRect(int x0, int y0, int x1, int y1, uint rgb, byte depth = 0)
     {
+        //Filling a rectangle is SUPER easy lol.
+        (var glX0, var glY0) = PixelToGL(x0, y0);
+        (var glX1, var glY1) = PixelToGL(x1, y1);
+        mesh.AddVertex();
+        VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
 
+        //TODO: depth
+        //pos(3), texcoord(2), color(4)
+        //triangle one
+        mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX0, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        //triangle two
+        mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX1, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
     }
     public void DrawLine(int x1, int y1, int x2, int y2, uint rgb, byte depth = 0)
     {
         var size = VRenderLib.Render.WindowSize();
         //we need to create a matrix transform that will turn our unit square into a pixel-sized object.
-        
-        float glX1 = ((float)x1/(float)size.X - 0.5f) * 2;
-        float glY1 = ((float)y1/(float)size.Y - 0.5f) * 2;
-        float glX2 = ((float)x2/(float)size.X - 0.5f) * 2;
-        float glY2 = ((float)y2/(float)size.Y - 0.5f) * 2;
-        //TODO: see if lines become too thin
-        //float glX3 = ((float)(x1 + 1)/(float)size.X - 0.5f) * 2;
-        //float glY3 = ((float)(y1 + 1)/(float)size.Y - 0.5f) * 2;
-        //float glX4 = ((float)(x2 + 1)/(float)size.X - 0.5f) * 2;
-        //float glY4 = ((float)(y2 + 1)/(float)size.Y - 0.5f) * 2;
+
+        //start point
+        //start point + 1 pixel
+        float glX0 = ((x1 - 0.5f)/(float)size.X - 0.5f) * 2;
+        float glY0 = -((float)(y1 - 0.5f)/(float)size.Y - 0.5f) * 2;
+        //end point + 1 pixel
+        float glXf = ((float)(x2 - 0.5f)/(float)size.X - 0.5f) * 2;
+        float glYf = -((float)(y2 - 0.5f)/(float)size.Y - 0.5f) * 2;
+        //start point + 1 pixel
+        float glX01 = ((x1 + 0.5f)/(float)size.X - 0.5f) * 2;
+        float glY01 = -((float)(y1 + 0.5f)/(float)size.Y - 0.5f) * 2;
+        //end point + 1 pixel
+        float glXf1 = ((float)(x2 + 0.5f)/(float)size.X - 0.5f) * 2;
+        float glYf1 = -((float)(y2 + 0.5f)/(float)size.Y - 0.5f) * 2;
         
         //We need to convert the RGBA color into a vec4
         VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
@@ -100,9 +128,14 @@ public sealed class RenderDisplay : IDisplay
         //We add the vertices to the batch thingy
         //TODO: depth
         //pos(3), texcoord(2), color(4)
-        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX2, glY2, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(0,    0,    0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        //triangle one
+        mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glXf , glYf , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        //triangle two
+        mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glXf1, glYf1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
     }
 
     public void DrawVerticalLine(int x, int y1, int y2, uint rgb, byte depth = 0)
@@ -134,6 +167,12 @@ public sealed class RenderDisplay : IDisplay
     }
     public void DrawText(object font, int fontSize, string text, NodeBounds bounds, uint rgba, byte depth)
     {
+        (var x0, var y0) = PixelToGL(bounds.X ?? 0, bounds.Y ?? 0);
+        (var x1, var y1) = PixelToGL(bounds.W ?? 0, bounds.H ?? 0);
+        x1 += x0;
+        y1 += y0;
+        //This is why we need a custom shader - so that the text color and tint color can be blended nicely.
+        VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgba);
         
     }
     public void TextBounds(object font, int fontSize, string text, out int width, out int height)
@@ -265,6 +304,14 @@ public sealed class RenderDisplay : IDisplay
     public bool ScrollLock()
     {
         return IRender.CurrentRender.Keyboard().IsKeyDown(Keys.ScrollLock);
+    }
+
+    private (float, float) PixelToGL(int x, int y)
+    {
+        Vector2 size = VRenderLib.Render.WindowSize();
+        float glX = (x/(float)size.X - 0.5f) * 2;
+        float glY = -(y/(float)size.Y - 0.5f) * 2;
+        return (glX, glY);
     }
     private Keys KeyCodeToKeys(KeyCode key)
     {
