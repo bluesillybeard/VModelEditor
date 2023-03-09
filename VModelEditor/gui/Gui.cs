@@ -109,7 +109,7 @@ public sealed class Gui
                 for(int i=0; i<(int)attr % 5; i++)
                 {
                     new TextElement(
-                        meshTable, 0xFFFFFF, fontSize, 
+                        meshTable, 0xFFFFFFFF, fontSize, 
                         Enum.GetName(typeof(EAttribute), attr) + intToXYZW[i], 
                         display.defaultFont, display, 0
                     );

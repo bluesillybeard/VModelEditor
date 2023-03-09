@@ -16,8 +16,7 @@ public sealed class RenderDisplay : IDisplay
     {
         this.defaultFont = defaultFontTexture;
         mesh = new MeshBuilder();
-        //load the special shader.
-        //TODO: Once shader features loading is finished, make this not hard coded.
+        //first shader, for drawing colored objects
         shader = VRenderLib.Render.GetShader(
             //vertex shader code
             @"
@@ -45,8 +44,9 @@ public sealed class RenderDisplay : IDisplay
             void main()
             {
                 vec4 texColor = texture(tex, texCoordsOut);
-                //blend between the two colors, because on the colorOut alpha.
+                //blend between the two colors
                 pixelOut = mix(texColor, colorOut, colorOut.a);
+                if(pixelOut.a != 1.0)discard; //discard pixels with any level of transparency at all.
             }
             ",
             new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords, EAttribute.rgbaColor})
@@ -167,13 +167,46 @@ public sealed class RenderDisplay : IDisplay
     }
     public void DrawText(object font, int fontSize, string text, NodeBounds bounds, uint rgba, byte depth)
     {
-        (var x0, var y0) = PixelToGL(bounds.X ?? 0, bounds.Y ?? 0);
-        (var x1, var y1) = PixelToGL(bounds.W ?? 0, bounds.H ?? 0);
-        x1 += x0;
-        y1 += y0;
+        if(font is not IRenderTexture texture)
+        {
+            //TODO: handle error more gracefully
+            throw new Exception("Font is not a render texture!");
+        }
+        (var glx, var gly) = PixelToGL(bounds.X ?? 0, bounds.Y ?? 0);
         //This is why we need a custom shader - so that the text color and tint color can be blended nicely.
         VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgba);
-        
+        //Don't worry about re-generating the mesh every time.
+        // the mesh generator has a cache so it will reuse them if it can.
+        var nullableMesh = VRender.Utility.MeshGenerators.BasicText(text, false, false, out var err);
+        //TODO: handle error more gracefully
+        if(nullableMesh is null)throw new Exception(err);
+        var tmesh = nullableMesh.Value;
+        uint attributes = tmesh.attributes.TotalAttributes();
+        float[] vertices = tmesh.vertices;
+        Vector2i screenSize = VRenderLib.Render.WindowSize();
+        foreach(uint index in tmesh.indices)
+        {
+            //text mesh attributes are position, texCoord
+            float xp = vertices[index*attributes];
+            float yp = vertices[index*attributes+1];
+            //float zp = vertices[index*attributes+2]
+            float xt = vertices[index*attributes+3];
+            float yt = vertices[index*attributes+4];
+            
+            //We need to transform this vertex into where it belongs
+            //scale
+            float scalex = (bounds.W ?? 0)/screenSize.X;
+            float scaley = (bounds.H ?? 0)/screenSize.Y;
+            xp *= scalex;
+            yp *= scaley;
+            //translation is easy
+            xp += glx;
+            yp += gly;
+            //Now we add the whole thing.
+            //TODO: depth
+            //pos(3), texcoord(2), color(4)
+            mesh.AddVertex(xp, yp, 0, xt, yt, r/256f, g/256f, b/256f, 1);
+        }
     }
     public void TextBounds(object font, int fontSize, string text, out int width, out int height)
     {
