@@ -15,7 +15,8 @@ public sealed class RenderDisplay : IDisplay
     public RenderDisplay(IRenderTexture defaultFontTexture)
     {
         this.defaultFont = defaultFontTexture;
-        mesh = new MeshBuilder();
+        //position, textureCoords, color, blend between using the texture and using the color
+        mesh = new MeshBuilder(new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords, EAttribute.rgbaColor, EAttribute.scalar}));
         //first shader, for drawing colored objects
         shader = VRenderLib.Render.GetShader(
             //vertex shader code
@@ -24,12 +25,15 @@ public sealed class RenderDisplay : IDisplay
             layout (location=0) in vec3 position;
             layout (location=1) in vec2 texCoords;
             layout (location=2) in vec4 rgba;
+            layout (location=3) in float blend;
             //we don't apply any transform at all
-            out vec4 colorOut;
+            out vec4 fragColor;
             out vec2 texCoordsOut;
+            out float fragBlend;
             void main()
             {
-                colorOut = rgba;
+                fragBlend = blend;
+                fragColor = rgba;
                 texCoordsOut = texCoords;
                 gl_Position = vec4(position, 1.0);
             }
@@ -38,19 +42,20 @@ public sealed class RenderDisplay : IDisplay
             @"
             #version 330 core
             out vec4 pixelOut;
-            in vec4 colorOut;
+            in vec4 fragColor;
             in vec2 texCoordsOut;
+            in float fragBlend;
             uniform sampler2D tex;
             void main()
             {
                 vec4 texColor = texture(tex, texCoordsOut);
                 //blend between the two colors
-                pixelOut = vec4(1, 1, 1, 1);//mix(texColor, vec4(colorOut.xyz, 1), colorOut.a);
+                pixelOut = mix(texColor, fragColor, fragBlend);
                 if(pixelOut.a != 1)discard; //discard pixels with any level of transparency at all.
             }
             ",
-            new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords, EAttribute.rgbaColor})
-        );
+            mesh.attributes
+            );
     }
     //default font for text rendering
     public IRenderTexture defaultFont;
@@ -67,7 +72,11 @@ public sealed class RenderDisplay : IDisplay
     {
         //TODO: reuse mesh buffer
         //TODO: ability to use non-default font
-        var vmesh = mesh.ToMesh(shader.GetAttributes());
+        var vmesh = mesh.ToMesh();
+        if(vmesh.vertices.Length % mesh.attributes.TotalAttributes() != 0)
+        {
+            System.Console.Error.WriteLine("bro this aint right");
+        }
         renderMesh = VRenderLib.Render.LoadMesh(vmesh);
         VRenderLib.Render.Draw(
             defaultFont, renderMesh, shader, Enumerable.Empty<KeyValuePair<string, object>>(), false
@@ -80,10 +89,9 @@ public sealed class RenderDisplay : IDisplay
         (var glXp, var glYp) = PixelToGL(x+1, y+1);
         VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
         //We can get away with drawing a single triangle
-        mesh.AddVertex(glX, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX, glYp, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glXp, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.checkIndicesOrDie();
+        mesh.AddVertex(glX, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX, glYp, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glXp, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
     }
     public void FillRect(int x0, int y0, int x1, int y1, uint rgb, byte depth = 0)
     {
@@ -95,14 +103,13 @@ public sealed class RenderDisplay : IDisplay
         //TODO: depth
         //pos(3), texcoord(2), color(4)
         //triangle one
-        mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX0, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX0, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
         //triangle two
-        mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX1, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.checkIndicesOrDie();
+        mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX1, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
     }
     public void DrawLine(int x1, int y1, int x2, int y2, uint rgb, byte depth = 0)
     {
@@ -130,14 +137,13 @@ public sealed class RenderDisplay : IDisplay
         //TODO: depth
         //pos(3), texcoord(2), color(4)
         //triangle one
-        mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glXf , glYf , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glXf , glYf , 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
         //triangle two
-        mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glXf1, glYf1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
-        mesh.checkIndicesOrDie();
+        mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glXf1, glYf1, 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
+        mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, a/256f, 1);
     }
 
     public void DrawVerticalLine(int x, int y1, int y2, uint rgb, byte depth = 0)
@@ -186,6 +192,7 @@ public sealed class RenderDisplay : IDisplay
         uint attributes = tmesh.attributes.TotalAttributes();
         float[] vertices = tmesh.vertices;
         Vector2i screenSize = VRenderLib.Render.WindowSize();
+        Vector2 scale = new Vector2(fontSize*2, fontSize*2)/screenSize;
         foreach(uint index in tmesh.indices)
         {
             //text mesh attributes are position, texCoord
@@ -197,19 +204,16 @@ public sealed class RenderDisplay : IDisplay
             
             //We need to transform this vertex into where it belongs
             //scale
-            float scalex = (bounds.W ?? 0)/screenSize.X;
-            float scaley = (bounds.H ?? 0)/screenSize.Y;
-            xp *= scalex;
-            yp *= scaley;
+            xp *= scale.X;
+            yp *= scale.Y;
             //translation is easy
             xp += glx;
             yp += gly;
             //Now we add the whole thing.
             //TODO: depth
             //pos(3), texcoord(2), color(4)
-            mesh.AddVertex(xp, yp, 0, xt, yt, r/256f, g/256f, b/256f, 0);
+            mesh.AddVertex(xp, yp, 0, xt, yt, r/256f, g/256f, b/256f, a/256f, 0);
         }
-        mesh.checkIndicesOrDie();
     }
     public void TextBounds(object font, int fontSize, string text, out int width, out int height)
     {
