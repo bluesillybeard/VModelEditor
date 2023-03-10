@@ -45,8 +45,8 @@ public sealed class RenderDisplay : IDisplay
             {
                 vec4 texColor = texture(tex, texCoordsOut);
                 //blend between the two colors
-                pixelOut = mix(texColor, colorOut, colorOut.a);
-                if(pixelOut.a != 1.0)discard; //discard pixels with any level of transparency at all.
+                pixelOut = vec4(1, 1, 1, 1);//mix(texColor, vec4(colorOut.xyz, 1), colorOut.a);
+                if(pixelOut.a != 1)discard; //discard pixels with any level of transparency at all.
             }
             ",
             new Attributes(new EAttribute[]{EAttribute.position, EAttribute.textureCoords, EAttribute.rgbaColor})
@@ -83,13 +83,13 @@ public sealed class RenderDisplay : IDisplay
         mesh.AddVertex(glX, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
         mesh.AddVertex(glX, glYp, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
         mesh.AddVertex(glXp, glY, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.checkIndicesOrDie();
     }
     public void FillRect(int x0, int y0, int x1, int y1, uint rgb, byte depth = 0)
     {
         //Filling a rectangle is SUPER easy lol.
         (var glX0, var glY0) = PixelToGL(x0, y0);
         (var glX1, var glY1) = PixelToGL(x1, y1);
-        mesh.AddVertex();
         VRenderLib.ColorFromRGBA(out var r, out byte g, out byte b, out byte a, rgb);
 
         //TODO: depth
@@ -102,6 +102,7 @@ public sealed class RenderDisplay : IDisplay
         mesh.AddVertex(glX0, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
         mesh.AddVertex(glX1, glY0, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
         mesh.AddVertex(glX1, glY1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.checkIndicesOrDie();
     }
     public void DrawLine(int x1, int y1, int x2, int y2, uint rgb, byte depth = 0)
     {
@@ -136,6 +137,7 @@ public sealed class RenderDisplay : IDisplay
         mesh.AddVertex(glX01, glY01, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
         mesh.AddVertex(glXf1, glYf1, 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
         mesh.AddVertex(glX0 , glY0 , 0, 0, 0.5f, r/256f, g/256f, b/256f, 1);
+        mesh.checkIndicesOrDie();
     }
 
     public void DrawVerticalLine(int x, int y1, int y2, uint rgb, byte depth = 0)
@@ -205,8 +207,9 @@ public sealed class RenderDisplay : IDisplay
             //Now we add the whole thing.
             //TODO: depth
             //pos(3), texcoord(2), color(4)
-            mesh.AddVertex(xp, yp, 0, xt, yt, r/256f, g/256f, b/256f, 1);
+            mesh.AddVertex(xp, yp, 0, xt, yt, r/256f, g/256f, b/256f, 0);
         }
+        mesh.checkIndicesOrDie();
     }
     public void TextBounds(object font, int fontSize, string text, out int width, out int height)
     {
