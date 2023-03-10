@@ -40,7 +40,6 @@ public class VModelEditor
         //Load some stuff that doesn't interact with the GPU yet
         fallbackTexture = ImageResult.FromMemory(File.ReadAllBytes("ascii.png"));
         camera = new Camera(Vector3.Zero, Vector3.Zero, 90, render.WindowSize());
-
         render.Run();
 
         //render.Dispose();

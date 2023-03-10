@@ -75,9 +75,11 @@ public sealed class Gui
     {
         FileMenuUpdate();
         MeshTableUpdate();
+        MeshUpdate();
         var size = VRenderLib.Render.WindowSize();
         plane.SetSize(size.X, size.Y);
         plane.Iterate();
+
         modelChanged = false;
     }
     public void Render()
@@ -125,6 +127,44 @@ public sealed class Gui
                 textBox.SetText(f.ToString());
             }
         }
+
+        //We need to see if any of the items in the table have changed, then update the mesh accordingly
+        var items = meshTable.GetChildren();
+        for(int i=0; i<items.Count; i++)
+        {
+            var item = items[i];
+            if(item is TextBoxElement textBox)
+            {
+                ReadTextboxAndUpdatemesh(i, textBox);
+            }
+        }
+
+    }
+
+    private void ReadTextboxAndUpdatemesh(int index, TextBoxElement element)
+    {
+        if(element.changed && editor.model is not null)
+        {
+            if(float.TryParse(element.GetText(), out float number))
+            {
+                //The index here is the same as the mesh index,
+                // Because of how the table is arranged.
+                modelChanged = true;
+                var mesh = editor.model.Value.mesh;
+                mesh.vertices[index] = number;
+            }
+            element.changed = false;
+        }
+    }
+
+    private void MeshUpdate()
+    {
+        //We need to update the mesh if it has changed
+        if(editor.model is not null && modelChanged)
+        {
+            editor.OpenModel(editor.model.Value);
+        }
+        modelChanged = false;
     }
     private bool _addFileMenu;
     void FileMenuShow(ButtonElement _)
