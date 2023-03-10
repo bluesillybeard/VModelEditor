@@ -51,7 +51,7 @@ public sealed class RenderDisplay : IDisplay
                 vec4 texColor = texture(tex, texCoordsOut);
                 //blend between the two colors
                 pixelOut = mix(texColor, fragColor, fragBlend);
-                if(pixelOut.a != 1)discard; //discard pixels with any level of transparency at all.
+                if(pixelOut.a < 0.9)discard; //discard pixels with any level of transparency at all.
             }
             ",
             mesh.attributes
