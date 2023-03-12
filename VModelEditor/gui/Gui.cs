@@ -4,6 +4,7 @@ namespace GUI;
 using BasicGUI;
 
 using System.Diagnostics;
+using System.Text;
 
 using vmodel;
 
@@ -15,7 +16,7 @@ public sealed class Gui
 {
     //properties of the GUI state
     public int fontSize;
-    public VerticesOrTriangles verticesOrTriangles;
+    public TableType tableType;
     //The Rendering stuff
     BasicGUIPlane plane;
     RenderDisplay display;
@@ -53,7 +54,7 @@ public sealed class Gui
         // Triangles or Vertices toggle. Defaults to Triangles
         verticesOrTrianglesButton = new ButtonElement(topButtons, null, null, ToggleVerticesOrTriangles, null, null);
         verticesOrTrianglesButton.drawable = new TextElement(verticesOrTrianglesButton, 0xFFFFFFFF, this.fontSize, "Triangle", display.defaultFont, display, 0);
-        verticesOrTriangles = VerticesOrTriangles.Triangles;
+        tableType = TableType.Triangles;
 
         fileMenu = new StackingContainer(null, StackDirection.down, -1);
         var openButton = new ButtonElement(fileMenu, null, null, OpenFileButton, null, null);
@@ -73,13 +74,11 @@ public sealed class Gui
 
     public void Update()
     {
-        FileMenuUpdate();
-        MeshTableUpdate();
-        MeshUpdate();
         var size = VRenderLib.Render.WindowSize();
         plane.SetSize(size.X, size.Y);
         plane.Iterate();
-
+        FileMenuUpdate();
+        MeshUpdate();
         modelChanged = false;
     }
     public void Render()
@@ -87,22 +86,53 @@ public sealed class Gui
         plane.Draw();
     }
     private static readonly char[] intToXYZW = new char[]{'X', 'Y', 'Z', 'W'};
-    private void MeshTableUpdate()
+    private void MeshUpdate()
     {
+        if(modelChanged)
+        {
+            GenerateMeshTable();
+        }
+        UpdateMeshFromTable();
+        //We need to update the mesh if it has changed
         if(editor.model is not null && modelChanged)
         {
-            System.Console.WriteLine("Regenerated mesh table");
-            //populate the table.
-            // TODO: scrolling
-            // TODO: make the points editable
-            // TODO: vertices or triangles
-            //clear the table
-            var children = meshTable.GetChildren().ToArray(); //ToArray to avoid enumeration problems
-            foreach(var child in children)
+            editor.OpenModel(editor.model.Value);
+        }
+        modelChanged = false;
+    }
+
+    private void UpdateMeshFromTable()
+    {
+        //We need to see if any of the items in the table have changed, then update the mesh accordingly
+        var items = meshTable.GetChildren();
+        for(int i=0; i<items.Count; i++)
+        {
+            var item = items[i];
+            if(item is TextBoxElement textBox)
             {
-                meshTable.RemoveChild(child);
+                //we subtract the first row, since the first row are just labels.
+                // The index we want is the index into the mesh vertices, not the index into the table.
+                ReadTextboxAndUpdatemesh(i - meshTable.columns, textBox);
             }
-            Attributes attribs = editor.model.Value.mesh.attributes;
+        }
+    }
+    private void GenerateMeshTable()
+    {
+        if(editor.model is null)
+        {
+            return;
+        }
+        //populate the table.
+        // TODO: scrolling
+        //clear the table
+        var children = meshTable.GetChildren().ToArray(); //ToArray to avoid enumeration problems
+        var mesh = editor.model.Value.mesh;
+        foreach(var child in children)
+        {
+            meshTable.RemoveChild(child);
+        }
+        Attributes attribs = mesh.attributes;
+        if(tableType == TableType.Vertices){
             //make sure the table has the right number of columns
             meshTable.columns = (int)attribs.TotalAttributes();
             //table labels
@@ -118,7 +148,7 @@ public sealed class Gui
                 }
             }
             //Table values
-            foreach(float f in editor.model.Value.mesh.vertices)
+            foreach(float f in mesh.vertices)
             {
                 var textBox = new TextBoxElement(
                     meshTable, fontSize, 0xFFFFFFFF, display.defaultFont, display, 0
@@ -126,21 +156,21 @@ public sealed class Gui
                 textBox.back = new ColorBackgroundElement(textBox, 0x000010FF, 2);
                 textBox.SetText(f.ToString());
             }
-        }
-
-        //We need to see if any of the items in the table have changed, then update the mesh accordingly
-        var items = meshTable.GetChildren();
-        for(int i=0; i<items.Count; i++)
+        } else if(tableType == TableType.Triangles)
         {
-            var item = items[i];
-            if(item is TextBoxElement textBox)
+            //p1, p2, p3, face
+            meshTable.columns = 4;
+            //table labels
+            new TextElement(meshTable, 0xFFFFFFFF, fontSize, "p1", display.defaultFont, display, 0);
+            new TextElement(meshTable, 0xFFFFFFFF, fontSize, "p2", display.defaultFont, display, 0);
+            new TextElement(meshTable, 0xFFFFFFFF, fontSize, "p3", display.defaultFont, display, 0);
+            new TextElement(meshTable, 0xFFFFFFFF, fontSize, "faces", display.defaultFont, display, 0);
+            //table values - these get a bit complex
+            for(int i=0; i<mesh.indices.Length/3; i++)
             {
-                //we subtract the first row, since the first row are just labels.
-                // The index we want is the index into the mesh vertices, not the index into the table.
-                ReadTextboxAndUpdatemesh(i - meshTable.columns, textBox);
+                //TODO
             }
         }
-
     }
 
     private void ReadTextboxAndUpdatemesh(int index, TextBoxElement element)
@@ -149,25 +179,103 @@ public sealed class Gui
         {
             if(float.TryParse(element.GetText(), out float number))
             {
-                //The index here is the same as the mesh index,
-                // Because of how the table is arranged.
-                modelChanged = true;
-                var mesh = editor.model.Value.mesh;
-                mesh.vertices[index] = number;
+                UpdateMeshItem(index, number, editor.model.Value.mesh);
+            } else 
+            {
+                //It didn't parse correctly, so we just haphazardly squish it into being a number
+                element.SetText(CoerseIntoNumber(element.GetText()));
             }
             element.changed = false;
         }
     }
 
-    private void MeshUpdate()
+    private void UpdateMeshItem(int index, float number, VMesh mesh)
     {
-        //We need to update the mesh if it has changed
-        if(editor.model is not null && modelChanged)
-        {
-            editor.OpenModel(editor.model.Value);
+        //The index here is the same as the mesh index,
+        // Because of how the table is arranged.
+    
+        if(tableType == TableType.Vertices){
+            mesh.vertices[index] = number;
         }
-        modelChanged = false;
+        else if(tableType == TableType.Triangles){
+            //The table will be 4 columns wide: p1, p2, p3, faces
+            var intNumber = (uint) number;
+            bool isIndex = (index % 4)!=3;
+            if(isIndex)
+            {
+                if(intNumber > mesh.vertices.Length)
+                {
+                    return; //Only valid indices should be accepted
+                }
+                int indexIndex = ((index+1)*3)/4; //convert the table index into an index into the meshes indices
+                mesh.indices[indexIndex] = intNumber;
+                modelChanged = true;
+            }
+            else
+            {
+                //if it's a face mapping
+                if(mesh.triangleToFaces is null)
+                {
+                    mesh.triangleToFaces = new byte[mesh.indices.Length/3];
+                }
+                int faceIndex = index/4;
+                mesh.triangleToFaces[faceIndex] = (byte)intNumber;
+
+            }
+        }
     }
+
+    private string CoerseIntoNumber(string input)
+    {
+        StringBuilder b = new StringBuilder(input.Length);
+        bool hadPeriod = false;
+        bool hadE = false;
+        bool hadCharAfterE = false;
+        foreach(char c in input)
+        {
+            if(IsNumber(c))
+            {
+                b.Append(c);
+                if(hadE) hadCharAfterE = true;
+            }
+            else if(!hadPeriod && c == '.')
+            {
+                hadPeriod = true;
+                b.Append(c);
+            }
+            else if(!hadE && c == 'E')
+            {
+                hadE = true;
+                hadPeriod = true; //we can't have a period after an E
+                b.Append(c);
+            }
+            else if(hadE && !hadCharAfterE && (c == '-' || c == '+'))
+            {
+                b.Append(c);
+                hadCharAfterE = true;
+            }
+        }
+        return b.ToString();
+    }
+
+    private bool IsNumber(char c)
+    {
+        switch(c)
+        {
+            case '1': return true;
+            case '2': return true;
+            case '3': return true;
+            case '4': return true;
+            case '5': return true;
+            case '6': return true;
+            case '7': return true;
+            case '8': return true;
+            case '9': return true;
+            case '0': return true;
+        }
+        return false;
+    }
+
     private bool _addFileMenu;
     void FileMenuShow(ButtonElement _)
     {
@@ -315,24 +423,24 @@ public sealed class Gui
 
     void ToggleVerticesOrTriangles(ButtonElement b)
     {
-        //Handle vertices case
-        if(verticesOrTriangles is VerticesOrTriangles.Vertices)
+        //Make sure it's valid - if it's not valid, things are VERY wrong and we should crash.
+        if(verticesOrTrianglesButton.drawable is null){
+            throw new Exception("Null verticesOrTriangles text element!");
+        }
+        if(verticesOrTrianglesButton.drawable is not TextElement drawable)
         {
-            verticesOrTriangles = VerticesOrTriangles.Triangles;
-            //I know FOR A FACT that the drawable is a text element and is not null.
-            // At least as long as nobody messed with it while I wasn't looking...
-            #nullable disable
-            ((TextElement)verticesOrTrianglesButton.drawable).Text = "Triangle";
-            #nullable enable
+            throw new Exception("verticesOrTriangles text element isn't a text box!");
+        }
+        modelChanged = true;
+        //Handle vertices case
+        if(tableType is TableType.Vertices)
+        {
+            tableType = TableType.Triangles;
+            drawable.Text = "Triangle";
             return;
         }
-        //It was triangles
-        //I know FOR A FACT that the drawable is a text element and is not null.
-        // At least as long as nobody messed with it while I wasn't looking...
-        #nullable disable
-        ((TextElement)verticesOrTrianglesButton.drawable).Text = "Vertices";
-        #nullable enable
-        verticesOrTriangles = VerticesOrTriangles.Vertices;
+        drawable.Text = "Vertices";
+        tableType = TableType.Vertices;
     }
 
     void OpenFileButton(ButtonElement _)
@@ -377,7 +485,7 @@ public sealed class Gui
     }
 }
 
-public enum VerticesOrTriangles
+public enum TableType
 {
     Vertices, Triangles
 }

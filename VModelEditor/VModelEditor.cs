@@ -53,7 +53,7 @@ public class VModelEditor
             throw new Exception("bro can't load font file");
         }
         //Setup
-        ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 15, this);
+        ui = new Gui(render.WindowSize().X, render.WindowSize().Y, font, 12, this);
     }
     private void Render(TimeSpan delta)
     {
