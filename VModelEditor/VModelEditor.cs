@@ -143,6 +143,6 @@ public class VModelEditor
         var gpuModel = render.LoadModel(model);
         modelRenderMesh = gpuModel.mesh;
         modelRenderTexture = gpuModel.texture;
-        modelShader = render.GetShader(new ShaderFeatures(model.mesh.attributes, true, true));
+        modelShader = render.GetShader(new ShaderFeatures(model.mesh.attributes, false, true));
     }
 }
