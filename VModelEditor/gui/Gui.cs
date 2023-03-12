@@ -135,7 +135,9 @@ public sealed class Gui
             var item = items[i];
             if(item is TextBoxElement textBox)
             {
-                ReadTextboxAndUpdatemesh(i, textBox);
+                //we subtract the first row, since the first row are just labels.
+                // The index we want is the index into the mesh vertices, not the index into the table.
+                ReadTextboxAndUpdatemesh(i - meshTable.columns, textBox);
             }
         }
 
