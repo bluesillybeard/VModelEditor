@@ -88,6 +88,10 @@ public sealed class Gui
     private static readonly char[] intToXYZW = new char[]{'X', 'Y', 'Z', 'W'};
     private void MeshUpdate()
     {
+        if(editor.model is null)
+        {
+            return;
+        }
         if(modelChanged)
         {
             GenerateMeshTable();
@@ -166,9 +170,24 @@ public sealed class Gui
             new TextElement(meshTable, 0xFFFFFFFF, fontSize, "p3", display.defaultFont, display, 0);
             new TextElement(meshTable, 0xFFFFFFFF, fontSize, "faces", display.defaultFont, display, 0);
             //table values - these get a bit complex
-            for(int i=0; i<mesh.indices.Length/3; i++)
+            for(int i=0; i<mesh.indices.Length*4/3; i++)
             {
-                //TODO
+                //This is what I get for using a single table to represent two arrays
+                bool isIndex = (i % 4)!=3;
+                var textBox = new TextBoxElement(meshTable, fontSize, 0xFFFFFFFF, display.defaultFont, display, 0);
+                if(isIndex)
+                {
+                    textBox.SetText(mesh.indices[((i+1)*3)/4].ToString());
+                } else
+                {
+                    //A face mapping
+                    if(mesh.triangleToFaces is null){
+                        textBox.SetText("null");
+                    }
+                    else{
+                        textBox.SetText(mesh.triangleToFaces[i/4].ToString());
+                    }
+                }
             }
         }
     }
@@ -193,9 +212,10 @@ public sealed class Gui
     {
         //The index here is the same as the mesh index,
         // Because of how the table is arranged.
-    
+
         if(tableType == TableType.Vertices){
             mesh.vertices[index] = number;
+            modelChanged = true;
         }
         else if(tableType == TableType.Triangles){
             //The table will be 4 columns wide: p1, p2, p3, faces
@@ -220,11 +240,12 @@ public sealed class Gui
                 }
                 int faceIndex = index/4;
                 mesh.triangleToFaces[faceIndex] = (byte)intNumber;
-
+                modelChanged = true;
             }
         }
     }
 
+    //This is dusgusting, but it is what it is.
     private string CoerseIntoNumber(string input)
     {
         StringBuilder b = new StringBuilder(input.Length);
@@ -253,6 +274,9 @@ public sealed class Gui
             {
                 b.Append(c);
                 hadCharAfterE = true;
+            } else if(b.Length == 0)
+            {
+                b.Append(c);
             }
         }
         return b.ToString();
