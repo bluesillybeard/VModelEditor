@@ -79,6 +79,7 @@ public class VModelEditor
 
     private void UpdateCamera()
     {
+        var size = VRenderLib.Render.WindowSize();
         var keyboard = render.Keyboard();
         var mouse = render.Mouse();
         if (keyboard.IsKeyReleased(Keys.C))
@@ -114,6 +115,7 @@ public class VModelEditor
         if (render.CursorLocked || mouse.IsButtonDown(MouseButton.Right)) {
             camera.Rotation += new Vector3((mouse.Y - mouse.PreviousY) * sensitivity, (mouse.X - mouse.PreviousX) * sensitivity, 0);
         }
+        camera.Aspect = (float)size.X / size.Y;
     }
     
     public void OpenImage(ImageResult r)

@@ -196,19 +196,21 @@ public sealed class Gui
     {
         if(element.changed && editor.model is not null)
         {
+            var model = editor.model.Value;
             if(float.TryParse(element.GetText(), out float number))
             {
-                UpdateMeshItem(index, number, editor.model.Value.mesh);
+                model.mesh = UpdateMeshItem(index, number, model.mesh);
             } else 
             {
                 //It didn't parse correctly, so we just haphazardly squish it into being a number
                 element.SetText(CoerseIntoNumber(element.GetText()));
             }
             element.changed = false;
+            editor.model = model;
         }
     }
 
-    private void UpdateMeshItem(int index, float number, VMesh mesh)
+    private VMesh UpdateMeshItem(int index, float number, VMesh mesh)
     {
         //The index here is the same as the mesh index,
         // Because of how the table is arranged.
@@ -225,7 +227,7 @@ public sealed class Gui
             {
                 if(intNumber > mesh.vertices.Length)
                 {
-                    return; //Only valid indices should be accepted
+                    return mesh; //Only valid indices should be accepted
                 }
                 int indexIndex = ((index+1)*3)/4; //convert the table index into an index into the meshes indices
                 mesh.indices[indexIndex] = intNumber;
@@ -243,6 +245,7 @@ public sealed class Gui
                 modelChanged = true;
             }
         }
+        return mesh;
     }
 
     //This is dusgusting, but it is what it is.
@@ -274,7 +277,7 @@ public sealed class Gui
             {
                 b.Append(c);
                 hadCharAfterE = true;
-            } else if(b.Length == 0)
+            } else if(b.Length == 0 && (c == '-' || c == '+'))
             {
                 b.Append(c);
             }
