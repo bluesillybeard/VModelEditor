@@ -346,6 +346,11 @@ public sealed class RenderDisplay : IDisplay
         return IRender.CurrentRender.Keyboard().IsKeyDown(Keys.ScrollLock);
     }
 
+    public float ScrollDelta()
+    {
+        return IRender.CurrentRender.Mouse().ScrollDelta.Y;
+    }
+
     private (float, float) PixelToGL(int x, int y)
     {
         Vector2 size = VRenderLib.Render.WindowSize();

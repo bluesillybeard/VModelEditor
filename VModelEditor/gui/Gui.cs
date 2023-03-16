@@ -62,12 +62,13 @@ public sealed class Gui
         var saveButton = new ButtonElement(fileMenu, null, null,  SaveFileButton, null, null);
         new TextElement(saveButton, 0xFFFFFFFF, fontSize, "Save File", font, display, 0);
         
+        var tableScroll= new ScrollingContainer(new LayoutContainer(plane.GetRoot(), new List<INode>(), VAllign.top, HAllign.right));
         //The table of vertices
         meshTable = new TableContainer(
             (container) => {
                 return new ColorOutlineRectElement(container, 0x666666ff, null, null, null, null, fontSize/4, 0);
             }, 1, new List<INode>(), //Only one column for now since that depends on the vertex attributes.
-            new LayoutContainer(plane.GetRoot(), new List<INode>(), VAllign.top, HAllign.right), fontSize/3
+            tableScroll, fontSize/3
         );
         new TextElement(meshTable, 0xFFFFFFFF, fontSize, "No model loaded",font, display, 0);
     }
